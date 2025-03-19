@@ -1,0 +1,54 @@
+# Ignorar archivos de entorno virtual
+raspi/  # Si usas un entorno virtual, reemplaza "mi_entorno" con el nombre de tu carpeta de entorno
+venv/
+.env/
+
+# Ignorar archivos de configuración local
+*.local
+*.env
+
+# Ignorar archivos generados por Pygame o OpenCV
+*.pyc
+__pycache__/
+*.swp
+*.swo
+
+# Ignorar archivos temporales de videos o imágenes
+temp_video.mp4  # Archivo temporal de video
+*.tmp
+
+# Ignorar archivos de configuración de IDE
+.vscode/
+.idea/
+
+# Ignorar archivos de sistema
+.DS_Store  # Archivo de metadatos de macOS
+Thumbs.db  # Archivo de miniaturas de Windows
+
+# Ignorar archivos de log
+*.log
+
+# Ignorar archivos de datos o caché
+*.db
+*.sqlite3
+
+# Ignorar archivos compilados de Python
+*.pyc
+*.pyo
+*.pyd
+
+# Ignorar archivos de distribución y build
+dist/
+build/
+*.egg-info/
+
+# Ignorar archivos de instalación de paquetes
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Ignorar archivos de Jupyter Notebook
+.ipynb_checkpoints/
+
+# Ignorar archivos de configuración personalizados
+config.ini
+settings.json
