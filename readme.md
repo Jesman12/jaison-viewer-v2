@@ -170,10 +170,10 @@ Si deseas contribuir a este proyecto, ¡abre un issue o envía un pull request! 
 Contacto
 Si tienes alguna pregunta o sugerencia, no dudes en contactarme:
 
-Nombre: [Tu nombre]
+Nombre: [Salvador Emmanuel Galicia Zambrano]
 
-Email: [tu-email@dominio.com]
+Email: [em.ga.za.03@gmail.com]
 
-GitHub: tu-usuario
+GitHub: Salvador145
 
 ¡Gracias por usar este reproductor de medios! 😊
