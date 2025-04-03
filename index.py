@@ -9,7 +9,7 @@ from io import BytesIO
 # Función para obtener medios según reglas activas
 def obtener_medios():
     try:
-        url = "https://api.domint.com.mx/rasp-web/api/rutas.php/get_media"
+        url = "https://api.domint.com.mx/RASP-API/api/rutas.php/get_media"
         response = requests.get(url)
 
         # Verificar si la respuesta fue exitosa (código 200)
