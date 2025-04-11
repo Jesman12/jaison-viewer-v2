@@ -5,11 +5,12 @@ import requests
 import numpy as np
 from datetime import datetime, timedelta
 from io import BytesIO
+import os
 
 # Función para obtener medios según reglas activas
 def obtener_medios():
     try:
-        url = "https://api.domint.com.mx/rasp-web/api/rutas.php/get_media"
+        url = "https://api.domint.com.mx/RASP-API/api/rutas.php/get_media"
         response = requests.get(url)
 
         # Verificar si la respuesta fue exitosa (código 200)
@@ -29,99 +30,131 @@ def obtener_medios():
         return []
 
 
-def mostrar_media_desde_url(screen, url, duracion):
+def mostrar_media_desde_url(screen, url, duracion, escalado='original', pos_x=0, pos_y=0):
     try:
-        print(f"Mostrando media desde URL: {url}")
+        print(f"Mostrando media desde URL: {url} - Escalado: {escalado} - Posición: ({pos_x}, {pos_y})")
 
-        # Verificar si la URL es una imagen o un video
+        # Obtener dimensiones de pantalla una sola vez
+        screen_width, screen_height = screen.get_size()
+        
+        # Verificar el tipo de archivo por extensión
         if url.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.bmp')):
-            # Obtener la imagen desde la URL
+            # Manejo de imágenes
             response = requests.get(url, stream=True)
             if response.status_code == 200:
-                # Convertir el contenido de la imagen a un objeto de imagen de Pygame
                 image_data = BytesIO(response.content)
-                img = pygame.image.load(image_data)
+                original_img = pygame.image.load(image_data)
+                img_width, img_height = original_img.get_size()
+                aspect_ratio = img_width / img_height
+                screen_aspect = screen_width / screen_height
 
-                # Escalar la imagen para que se ajuste a la pantalla
-                img = pygame.transform.scale(img, (screen.get_width(), screen.get_height()))
+                # Aplicar escalado según parámetro
+                if escalado == 1:
+                    img = original_img
+                    display_pos = (pos_x, pos_y)
+                elif escalado == 2:
+                    img = pygame.transform.scale(original_img, (screen_width, screen_height))
+                    display_pos = (0, 0)
+                elif escalado == 3 or 4:
+                    if aspect_ratio > screen_aspect:
+                        new_width = screen_width
+                        new_height = int(new_width / aspect_ratio)
+                    else:
+                        new_height = screen_height
+                        new_width = int(new_height * aspect_ratio)
+                    img = pygame.transform.scale(original_img, (new_width, new_height))
+                    display_pos = ((screen_width - new_width) // 2, (screen_height - new_height) // 2)
+                else:
+                    img = original_img
+                    display_pos = (pos_x, pos_y)
 
-                # Mostrar la imagen en la pantalla
-                screen.blit(img, (0, 0))
-                pygame.display.flip()
-
-                # Esperar la duración especificada antes de cambiar a la siguiente imagen
+                # Mostrar imagen
                 inicio = time.time()
+                clock = pygame.time.Clock()
                 while time.time() - inicio < duracion:
-                    # Manejar eventos de Pygame (como clics o cierres)
                     for event in pygame.event.get():
                         if event.type == pygame.QUIT:
-                            return False  # Salir del bucle si se cierra la ventana
+                            return False
                         elif event.type == pygame.MOUSEBUTTONDOWN:
-                            print("Clic detectado en la pantalla.")
-            else:
-                print(f"Error al cargar la imagen: {url}")
+                            print("Clic detectado")
+
+                    screen.fill((0, 0, 0))
+                    screen.blit(img, display_pos)
+                    pygame.display.flip()
+                    clock.tick(30)
 
         elif url.lower().endswith(('.mp4', '.avi', '.mov', '.mkv')):
-            # Descargar el video desde la URL
+            # Manejo de videos
             response = requests.get(url, stream=True)
             if response.status_code == 200:
-                # Guardar el video en un archivo temporal
                 temp_video_path = "temp_video.mp4"
                 with open(temp_video_path, 'wb') as f:
                     for chunk in response.iter_content(chunk_size=8192):
                         f.write(chunk)
 
-                # Cargar el video con OpenCV
                 cap = cv2.VideoCapture(temp_video_path)
-
-                # Obtener la tasa de fotogramas (FPS) del video
+                video_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                video_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                video_aspect = video_width / video_height
                 fps = cap.get(cv2.CAP_PROP_FPS)
+                delay = max(1, int(1000 / fps)) if fps > 0 else 30
 
-                # Calcular el tiempo de espera entre fotogramas
-                delay = int(1000 / fps)  # Tiempo en milisegundos
-
-                # Bucle para reproducir el video
                 inicio = time.time()
+                clock = pygame.time.Clock()
                 while time.time() - inicio < duracion:
                     ret, frame = cap.read()
                     if not ret:
-                        break  # Salir si no hay más fotogramas
+                        break
 
-                    # Convertir el fotograma de OpenCV (BGR) a Pygame (RGB)
                     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    frame = np.rot90(frame)  # Rotar el fotograma si es necesario
                     frame = pygame.surfarray.make_surface(frame)
 
-                    # Escalar el fotograma para que se ajuste a la pantalla
-                    frame = pygame.transform.scale(frame, (screen.get_width(), screen.get_height()))
+                    # Aplicar escalado al video
+                    if escalado == 'original':
+                        scaled_frame = frame
+                        frame_pos = (pos_x, pos_y)
+                    elif escalado == 'extendido':
+                        scaled_frame = pygame.transform.scale(frame, (screen_width, screen_height))
+                        frame_pos = (0, 0)
+                    elif escalado == 'fit':
+                        if video_aspect > screen_aspect:
+                            new_width = screen_width
+                            new_height = int(new_width / video_aspect)
+                        else:
+                            new_height = screen_height
+                            new_width = int(new_height * video_aspect)
+                        scaled_frame = pygame.transform.scale(frame, (new_width, new_height))
+                        frame_pos = ((screen_width - new_width) // 2, (screen_height - new_height) // 2)
+                    else:
+                        scaled_frame = frame
+                        frame_pos = (pos_x, pos_y)
 
-                    # Mostrar el fotograma en la pantalla
-                    screen.blit(frame, (0, 0))
+                    screen.fill((0, 0, 0))
+                    screen.blit(scaled_frame, frame_pos)
                     pygame.display.flip()
 
-                    # Esperar el tiempo adecuado entre fotogramas
-                    pygame.time.delay(delay)
-
-                    # Manejar eventos de Pygame (como clics o cierres)
                     for event in pygame.event.get():
                         if event.type == pygame.QUIT:
                             cap.release()
-                            return False  # Salir del bucle si se cierra la ventana
+                            os.remove(temp_video_path)
+                            return False
                         elif event.type == pygame.MOUSEBUTTONDOWN:
-                            print("Clic detectado en la pantalla.")
+                            print("Clic detectado")
 
-                # Liberar el video y eliminar el archivo temporal
+                    clock.tick(fps if fps > 0 else 30)
+
                 cap.release()
-                import os
                 os.remove(temp_video_path)
             else:
-                print(f"Error al cargar el video: {url}")
+                print(f"Error al cargar video: {url}")
 
         else:
-            print(f"Formato de archivo no soportado: {url}")
+            print(f"Formato no soportado: {url}")
 
     except Exception as e:
-        print(f"Error en la visualización del media: {e}")
+        print(f"Error en mostrar_media_desde_url: {str(e)}")
+        import traceback
+        traceback.print_exc()
 
     return True
     
@@ -168,12 +201,22 @@ if __name__ == "__main__":
                         fecha_fin = medio["fecha_inicio"]
                         duracion = medio["duracion"]  # Duración en segundos
                         prioridad = medio.get("prioridad", 0)  # Prioridad (por defecto 0 si no está presente)
+                        escalado = medio["escalado_id"]
+                        x = medio["x"]
+                        y = medio["y"]
 
                         print(f"Reproduciendo: {src} ({tipo_archivo}), Prioridad: {prioridad}, Duración: {duracion}s")
                         src_c = f"https://api.domint.com.mx/{src}"
 
                         # Mostrar la imagen o reproducir el video
-                        running = mostrar_media_desde_url(screen, src_c, duracion)
+                        running = mostrar_media_desde_url(
+                                                    screen, 
+                                                    src_c, 
+                                                    duracion,
+                                                    escalado=escalado,  # 'original', 'extendido' o 'fit'
+                                                    pos_x=x,           # Posición X (solo para 'original')
+                                                    pos_y=y            # Posición Y (solo para 'original')
+                                                )
 
                         # Verificar si han pasado 30 segundos desde la última actualización
                         if time.time() - ultima_actualizacion >= 30:
